@@ -16,6 +16,7 @@ class Controller:
     pathToInbox = ""
     delay = -1
     senderGetsHisOwnMessage = False
+    partialReplacementOfSpecialCharacters = True
 
     def __init__(self, in_pathToUsers, in_pathToInbox, in_delay):
         #pdb.set_trace()
@@ -39,7 +40,12 @@ class Controller:
                 numberOfSender = path.split("_")[3]
                 textFile = open(path, 'r')
                 text = textFile.read()
-                text = text.lower()             #everything to lower case. it could cause problems, when channel names are not spelled correctly (upper/lower-case)
+                text = text.lower()                                     #everything to lower case. it could cause problems, when channel names are not spelled correctly (upper/lower-case)
+                if self.partialReplacementOfSpecialCharacters == True:
+                    text = text.replace("ä", "ae")                      #gammu has problems to send utf-8 characters. i was not able to fix that. so i just replace the characters with ascii-conform ones
+                    text = text.replace("ö", "oe")
+                    text = text.replace("ü", "ue")
+                    text = text.replace("ß", "ss")
                 if text[-1:] == "\n":
                     text = text[:-1]            #removing "/n" if there (happens at debugging)
                 
