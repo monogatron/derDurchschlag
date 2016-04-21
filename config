@@ -1,4 +1,4 @@
 inbox: /var/spool/gammu/inbox/
 users: /home/pi/derDurchschlag/users/
 delay: 30
-
+admin: +123456789

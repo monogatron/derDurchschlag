@@ -48,7 +48,6 @@ class Controller:
                     text = text.replace("ß", "ss")
                 if text[-1:] == "\n":
                     text = text[:-1]            #removing "/n" if there (happens at debugging)
-                
                 print("text: " + text)
                 self.interpretMessage( numberOfSender, text )
                 print("removing file: " + path)
@@ -139,7 +138,6 @@ class Controller:
             senderIsAlreadyAUser = True
 
         try:
-
             if len(blocks) == 4:
                 if ( blocks[0] == "hello" or blocks[0] == "hallo" ):
                     if senderIsAlreadyAUser == False:
@@ -244,18 +242,16 @@ class Controller:
                                 if (otherUser.getNumber() != in_number) or self.senderGetsHisOwnMessage:          #the sender doesn't need to get his own message
                                     otherUser.sendSMS( channelName, sender.getNick(), potentialText )
                     else:
-                        pass
                         #user tryed to send a message to a channel, but is not even an existing user
                         print("user tryed to send a message to a channel, but is needs to register first, or used wrong syntax")
         except KeyError:
-            pass
             print("error while trying to handle a incomming command")
-            pdb.set_trace()
+            #pdb.set_trace()
             #missing: send user a sms back, that his command is not valid.
 
 
 
-    def writeNewUserFile( self, in_number, in_nick, in_channels):    #, in_generalMute ):
+    def writeNewUserFile( self, in_number, in_nick, in_channels):
         print("entering writeUserFile")
         userFilePath = self.pathToUsers + in_number
         userFile = open( userFilePath, 'a')

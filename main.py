@@ -17,7 +17,7 @@ pathToConfig = os.getcwd() + "/config"          #get current directory of applic
 pathToUsers = ""
 pathToInbox = ""
 delay = -1
-#pdb.set_trace()
+admin = ""
 
 try:
     try:
@@ -34,11 +34,25 @@ try:
             pathToUsers = line.split(" ")[1][:-1]
         elif line.split(" ")[0] == "delay:":
             delay = int( line.split(" ")[1][:-1] )
+        elif line.split(" ")[0] == "admin:":
+            admin = line.split(" ")[1][:-1]
+            
 except:
     print("problem while parsing config-file")
     exit(1)
     
-
-controller = controller.Controller(pathToUsers, pathToInbox, delay)
+try:
+    controller = controller.Controller(pathToUsers, pathToInbox, delay)
+except KeyboardInterrupt:
+    print("\nshutdown by user")
+except:
+    print("\nentering except")
+    #pdb.set_trace()
+    text = "derDurchschlag is shutting down. bad coding?"
+    toSendString =  "echo '" + text + "' | gammu-smsd-inject TEXT " + admin
+    os.system( toSendString )
+    print("sending SMS to " + admin + " (admin): " + str( toSendString ) )
+    
 
 exit(1)
+
