@@ -7,19 +7,20 @@ import glob
 from datetime import datetime, timedelta
 from dateutil import parser
 
-
+import message
 import user
 
 class Controller:
     
-    pathToUsers = ""
-    pathToInbox = ""
-    delay = -1
-    senderGetsHisOwnMessage = False
-    partialReplacementOfSpecialCharacters = True
+    
 
-    def __init__(self, in_pathToUsers, in_pathToInbox, in_delay):
-        #pdb.set_trace()
+    def __init__(self, in_pathToUsers, in_pathToInbox, in_delay, in_senderGetsHisOwnMessage):
+        self.pathToUsers = ""
+        self.pathToInbox = ""
+        self.delay = -1
+        self.senderGetsHisOwnMessage = in_senderGetsHisOwnMessage
+        self.partialReplacementOfSpecialCharacters = True
+
         if in_pathToInbox[-1:] != "/":
             in_pathToInbox = in_pathToInbox + "/"
         if in_pathToUsers[-1:] != "/":
@@ -34,50 +35,135 @@ class Controller:
             #print("once again")
             time.sleep( int(self.delay) )
             completePath = self.pathToInbox[:-1] + "/*.txt"
+            pathesToIncommingMessages = False
             pathesToIncommingMessages = glob.glob( completePath )
-            for path in pathesToIncommingMessages:
-                print("\n\nreceived a message: " + str(path) )
-                numberOfSender = path.split("_")[3]
-                textFile = open(path, 'r')
-                text = textFile.read()
-                text = text.lower()                                     #everything to lower case. it could cause problems, when channel names are not spelled correctly (upper/lower-case)
-                if self.partialReplacementOfSpecialCharacters == True:
-                    text = text.replace("ä", "ae")                      #gammu has problems to send utf-8 characters. i was not able to fix that. so i just replace the characters with ascii-conform ones
-                    text = text.replace("ö", "oe")
-                    text = text.replace("ü", "ue")
-                    text = text.replace("ß", "ss")
-                if text[-1:] == "\n":
-                    text = text[:-1]            #removing "/n" if there (happens at debugging)
-                print("text: " + text)
-                self.interpretMessage( numberOfSender, text )
-                print("removing file: " + path)
-                os.remove(path)
+            ArrayWithMessages = []
+            if len(pathesToIncommingMessages) >= 1:
+                ArrayWithMessages = self.getArrayWithMessages( pathesToIncommingMessages )  #is is very likely that messages, that are longer then the standard-sms-size will be split into multiple "small" messages. this function merges them back together to a single one
+            #pdb.set_trace()
+            for incommingMessage in ArrayWithMessages:
+                print( "\n\nreceived a message: " + str(incommingMessage.path) )
+                print( "content: " + str(incommingMessage.content) )
+                numberOfSender = incommingMessage.fromNumber
+                self.interpretMessage( incommingMessage )
+                
 
+
+
+
+    def getArrayWithMessages(self, in_pathesToIncommingMessages):
+        #print("entering getArrayWithMessages")
+        # first we need to check if there are multiple-messages at all. 
+        # a multiple-message can be recognized by the file-name. a single-message 
+        # has the format: IN20160514_110957_00_+49123456798_00.txt
+        # where             ^ this is the date
+        #                            ^ this is the time of receive.
+        #        i do not know what this ^ is
+        #                              but this ^ is the sender's number
+        #                                          and this ^ is a counter, which indicates the 'position' in a multi-message.
+        # so, first we check for this numbers.
+        arrayWithMessages = []
+        for singlePath in in_pathesToIncommingMessages:
+            fileName = singlePath.split("/").pop()  #file name of the message
+            fileName = fileName.split(".")[0]       #without the '.'-extention
+            splitted = fileName.split("_")          # zeroes element contains date, first the time, second i dont know, third the number of sender, fourth the position in a multi-message
+            date = False
+            time = False
+            fromNumber = False
+            positionInMultiMessage = False
+            try:
+                date = splitted[0][2:]              #date without the 'IN'
+                time = splitted[1]
+                fromNumber = splitted[3]
+                positionInMultiMessage = int( splitted[4] )
+            except:
+                print("unknown filename-format")    #something went wrong
+                self.shutdown()
+            
+            #that^ was the header,
+            #now comes the content:
+            textFile = open(singlePath, 'r')
+            text = textFile.read()
+            text = text.lower()                                     #everything to lower case. it could cause problems, when channel names are not spelled correctly (upper/lower-case)
+            if self.partialReplacementOfSpecialCharacters == True:
+                text = text.replace("ä", "ae")                      #gammu has problems to send utf-8 characters. i was not able to fix that. so i just replace the characters with ascii-conform ones
+                text = text.replace("ö", "oe")
+                text = text.replace("ü", "ue")
+                text = text.replace("ß", "ss")
+            if text[-1:] == "\n":
+                text = text[:-1]            #removing "/n" if there (happens at debugging)
+            print("text: " + text)
+            arrayWithMessages.append( message.Message( singlePath, date, time, fromNumber, positionInMultiMessage, text) )
+            
+            print("removing file: " + singlePath)
+            os.remove(singlePath) #removing the incomming message
+            
+        #pdb.set_trace()
+        #so now we have an array with message-objects. but the multi-messages are still separated
+        sorted_arrayWithMessages = sorted( arrayWithMessages, key = lambda x: x.positionInMultiMessage, reverse = True )
+        #the zeroes element in this array should now have the highest positionInMultiMessage
+        
+        
+        
+        while sorted_arrayWithMessages[0].positionInMultiMessage != 0: #is there a multi-message at all??
+            print("entering while-loop")
+            #ok, we have a multi message. now we need to merge that message.
+            #first we make an extra array with messages from the sender
+            arrayWithMessagesFromSender = []
+            numberOfSenderOfMultiMessage = sorted_arrayWithMessages[0].fromNumber
+            indexesOfMessagesIn_sorted_arrayWithMessages_whichMustBeDeleted = []
+            #pdb.set_trace()
+            index = 0
+            for messageInArray in sorted_arrayWithMessages:
+                if messageInArray.fromNumber == numberOfSenderOfMultiMessage:
+                    arrayWithMessagesFromSender.append(messageInArray)
+                    indexesOfMessagesIn_sorted_arrayWithMessages_whichMustBeDeleted.append(index)
+                index += 1
+            #pdb.set_trace()
+            for indexToDelete in reversed(indexesOfMessagesIn_sorted_arrayWithMessages_whichMustBeDeleted):#need to reverse the order of to-delete-indexes because otherwise the indexes wouldn't be correct any more...
+                sorted_arrayWithMessages.pop(indexToDelete)
+            sorted_arrayWithMessagesFromSender = sorted( arrayWithMessagesFromSender, key = lambda x: x.positionInMultiMessage, reverse = False )
+            # now we have an array with messages from a sender who sent a multi-message. the order is the lowest number of "positionInMultiMessage" in the beginning
+            #pdb.set_trace()
+            mergedContent = ""
+            for messageInArray in sorted_arrayWithMessagesFromSender:
+                mergedContent += messageInArray.content
+            newMergedMessage = message.Message( sorted_arrayWithMessagesFromSender[0].path, sorted_arrayWithMessagesFromSender[0].date, sorted_arrayWithMessagesFromSender[0].time, sorted_arrayWithMessagesFromSender[0].fromNumber, 0, mergedContent )
+            sorted_arrayWithMessages.append(newMergedMessage)
+            sorted_arrayWithMessages = sorted( sorted_arrayWithMessages, key = lambda x: x.positionInMultiMessage, reverse = True )
+            #pdb.set_trace()
+        #print("leaving getArrayWithMessages")
+        return sorted_arrayWithMessages
+        
+        
+        
 
     def getAllUsers(self):
-        pathesToUsers = glob.glob(self.pathToUsers + "*")
+        #pdb.set_trace()
+        pathesToUsers = glob.glob(self.pathToUsers + "*")   #puts all pathes to all user-files into an array
         output = []
         for path in pathesToUsers:
-            otherUser = user.User(path)
+            otherUser = user.User(path) #creates an user-object out of the path
             output.append(otherUser)
-        return output
+        return output       #returns the array with user-objects
 
 
-    def interpretMessage(self, in_numberOfSender, in_text):
+    #def interpretMessage(self, in_numberOfSender, in_text):
+    def interpretMessage(self, in_incommingMessage):
         #catch special cases:
-        if in_text == "mute":
-            in_text = "@mute"       #because most people probalby won't accept the "@", i'm doing an exeption here. "mute" without an "@" is enough to mute, and will be handlet the same as "@mute"
-        elif in_text == "ping":
-            in_text = "@ping"    
-        elif in_text == "":           #handle empty messages to avoid spam
-            print("that was an empty message from: " + in_numberOfSender )
+        if in_incommingMessage.content == "mute":
+            in_incommingMessage.content = "@mute"       #because most people probalby won't accept the "@", i'm doing an exeption here. "mute" without an "@" is enough to mute, and will be handlet the same as "@mute"
+        elif in_incommingMessage.content == "ping":
+            in_incommingMessage.content = "@ping"    
+        elif in_incommingMessage.content == "":           #handle empty messages to avoid spam
+            print("that was an empty message from: " + in_incommingMessage.fromNumber )
             return False
-        elif in_text == "unmute":
-            in_text = "@unmute"
+        elif in_incommingMessage.content == "unmute":
+            in_incommingMessage.content = "@unmute"
 
-        if in_text[0] == "@":
-            print("it is a command")
-            self.interpretCommand( in_numberOfSender, in_text )
+        if in_incommingMessage.content[0] == "@":
+            #print("it is a command")
+            self.interpretCommand( in_incommingMessage )
         
         #if the message doesn't beginn with an "@", 
         #then we just want to send the message to channel, the user is in
@@ -86,55 +172,57 @@ class Controller:
         else:
             #neet to check, it the user is existing in database:
             sender = False
-            allUsers = self.getAllUsers()
+            allUsers = self.getAllUsers()       #getAllUser() returns a array with user-objects
             for user in allUsers:
-                if in_numberOfSender == user.getNumber():
+                if in_incommingMessage.fromNumber == user.getNumber():
                     sender = user
 
             if sender != False:
-                #temp_path = self.pathToUsers + in_numberOfSender 
-                #sender = user.User( temp_path )
-                channelsSenderIsIn = sender.getChannels()
-
                 #pdb.set_trace()
-                
+                channelsSenderIsIn = sender.getChannels()
                 if len(channelsSenderIsIn) == 1:                    # user is in one channel or in no channel
                     if channelsSenderIsIn[0] == "":                 #user is in no channel
                         sender.sendSMS( "", "derDurchschlag", "you are in no channel. please send '@join.channelName' to join a channel")
                     else:                                           #user is only in one channel
-                        allOtherUsers = self.getAllUsers()
-                        for otherUser in allOtherUsers:
-                            channelsOtherUserIsIn = otherUser.getChannels()
+                        #allOtherUsers = self.getAllUsers()
+                        for user in allUsers:
+                            channelsOtherUserIsIn = user.getChannels()
                             if channelsSenderIsIn[0] in channelsOtherUserIsIn:
                                 #pdb.set_trace()
-                                if ( otherUser.getNumber() != in_numberOfSender ) or self.senderGetsHisOwnMessage:        #sender doesn't need to get his own message
-                                    otherUser.sendSMS( channelsSenderIsIn[0], sender.getNick(), in_text )
-
+                                if ( user.getNumber() != in_incommingMessage.fromNumber ) or self.senderGetsHisOwnMessage:        #sender doesn't need to get his own message
+                                    user.sendSMS( channelsSenderIsIn[0], sender.getNick(), in_incommingMessage.content )
+                        #sender.setLastUsedChannel(channelsSenderIsIn[0])
+                        #sender.setLastMessageSendAt()
+                        #sender.rewriteUserFile()
                 if len( channelsSenderIsIn ) > 1:
                     sender.sendSMS( "", "derDurchschlag", "you are in more then one channel. you must specify the channel, you want to send your message to. do that by add '@channelName' to the beginning of your message")
             else:
                 print("received a message but doesn't begin with an '@' and is not in database")
 
     
-    def interpretCommand(self, in_number, in_text ):
-        print("entering interpretCommand()")
-        commandBlock = in_text.split(" ")[0]
+    #def interpretCommand(self, in_number, in_text ):
+    def interpretCommand(self, in_incommingMessage ):
+        #pdb.set_trace()
+        #print("entering interpretCommand()")
+        #commandBlock = in_text.split(" ")[0]
+        commandBlock = in_incommingMessage.content.split(" ")[0]
         noMessageContent = False
         potentialText = ""
         try:
-            potentialText = in_text.split(" ", 1)[1]
+            potentialText = in_incommingMessage.content.split(" ", 1)[1]
         except IndexError:
             noMessageContent = True
         blocks = commandBlock.split(".")
-        print("blocks: " + str( blocks ) )
+        #print("blocks: " + str( blocks ) )
         blocks[0] = blocks[0][1:]       #remove the "@" from first block
-        pathToAllExistingUsers = glob.glob(self.pathToUsers + "*")
+        pathToAllExistingUsers = glob.glob(self.pathToUsers + "*")          #get pathes to all existing users
         NumbersOfAllExistingUsers = []
         senderIsAlreadyAUser = False
         #pdb.set_trace()
         for path in pathToAllExistingUsers:
             NumbersOfAllExistingUsers.append( path.split("/")[-1] )
-        if in_number in NumbersOfAllExistingUsers:
+        #if in_number in NumbersOfAllExistingUsers:
+        if in_incommingMessage.fromNumber in NumbersOfAllExistingUsers:
             senderIsAlreadyAUser = True
 
         try:
@@ -145,8 +233,8 @@ class Controller:
                             nick = blocks[1]
                             channel = []
                             channel.append(blocks[3])
-                            self.writeNewUserFile( in_number, nick, channel )
-                            temp_path = self.pathToUsers + in_number
+                            self.writeNewUserFile( in_incommingMessage.fromNumber, nick, channel )
+                            temp_path = self.pathToUsers + in_incommingMessage.fromNumber
                             sender = user.User( temp_path )
                             sender.sendSMS( "", "derDurchschlag", "you have been added to channel: '" + channel[0] + "'")
                         else:
@@ -155,7 +243,7 @@ class Controller:
                             os.system( toSendString )
                     else:                       # senderIsAlreadyAUser == True
                         #user is already an existing user
-                        sender = user.User( self.pathToUsers + in_number )
+                        sender = user.User( self.pathToUsers + in_incommingMessage.fromNumber )
                         sender.sendSMS( "", "derDurchschlag", "you are already an existing user. if you want to join a channel, just send '@join.channelName'")
                 else:
                     print("unknown command")
@@ -169,10 +257,10 @@ class Controller:
                         nick = blocks[1]
                         channels = []
                         channels.append("")             #adding no channel, because user has not joined yet
-                        self.writeNewUserFile( in_number, nick, channels )
+                        self.writeNewUserFile( in_incommingMessage.fromNumber, nick, channels )
                     else:                       # senderIsAlreadyAUser == True
                         #user is already an existing user
-                        sender = user.User( self.pathToUsers + in_number )
+                        sender = user.User( self.pathToUsers + in_incommingMessage.fromNumber )
                         sender.sendSMS( "", "derDurchschlag", "you are already an existing user. if you want to join a channel, just send '@join.channelName'")
 
                 elif blocks[0] == "exit" or blocks[1] == "exit":        #for example @exit.myChannel or @myChannel.exit
@@ -185,7 +273,7 @@ class Controller:
                         else:
                             print("something went wrong")
                             exit(0)
-                        temp_path = self.pathToUsers + in_number
+                        temp_path = self.pathToUsers + in_incommingMessage.fromNumber
                         sender = user.User( temp_path )
                         if sender.exitChannel( channelToLeave ) == True:
                             sender.sendSMS( "", "derDurchschlag", "you left the channel '" + channelToLeave + "'" )
@@ -197,7 +285,7 @@ class Controller:
                 elif blocks[0] == "join":          #for example: @join.someChannel
                     #pdb.set_trace()
                     if senderIsAlreadyAUser == True:
-                        UserFilePath = self.pathToUsers + in_number
+                        UserFilePath = self.pathToUsers + in_incommingMessage.fromNumber
                         sender = user.User( UserFilePath )
                         sender.joinChannel( blocks[1] )
                         sender.sendSMS( "", "derDurchschlag", "you joined the channel " + blocks[1] )
@@ -208,12 +296,12 @@ class Controller:
 
             elif len( blocks ) == 1:
                 if blocks[0] == "ping":                               # @ping
-                    print( "sending a pong to: " + in_number )
-                    toSendString =  "echo pong | gammu-smsd-inject TEXT " + in_number 
+                    print( "sending a pong to: " + in_incommingMessage.fromNumber )
+                    toSendString =  "echo pong | gammu-smsd-inject TEXT " + in_incommingMessage.fromNumber 
                     os.system( toSendString )
                 elif blocks[0] == "mute":                           #mute
                     if senderIsAlreadyAUser == True:
-                        UserFilePath = self.pathToUsers + in_number
+                        UserFilePath = self.pathToUsers + in_incommingMessage.fromNumber
                         sender = user.User( UserFilePath )
                         sender.mute()
                     else:
@@ -223,7 +311,7 @@ class Controller:
                         os.system( toSendString )
                 elif blocks[0] == "unmute":                         # @unmute
                     if senderIsAlreadyAUser == True:
-                        UserFilePath = self.pathToUsers + in_number
+                        UserFilePath = self.pathToUsers + in_incommingMessage.fromNumber
                         sender = user.User( UserFilePath )
                         sender.unmute()
                     else:
@@ -232,15 +320,30 @@ class Controller:
                         os.system( toSendString )
                 else:
                     if len(blocks) == 1 and senderIsAlreadyAUser == True:                        #command only consists of one word. for example '@mensen'. then its clear, it is a channel name
+                        #pdb.set_trace()
                         channelName = blocks[0].split(" ")[0]
-                        messageHasBeenSend = False
-                        allOtherUsers = self.getAllUsers()
-                        sender = user.User(self.pathToUsers+in_number)
-                        for otherUser in allOtherUsers:
-                            channelsOtherUserIsIn = otherUser.getChannels()
-                            if channelName in channelsOtherUserIsIn:
-                                if (otherUser.getNumber() != in_number) or self.senderGetsHisOwnMessage:          #the sender doesn't need to get his own message
-                                    otherUser.sendSMS( channelName, sender.getNick(), potentialText )
+                        messageHasBeenSend = False                  #message has been send at least once. if not, we can write the user back, that the channel is empty
+                        allUsers = self.getAllUsers()
+                        sender = user.User(self.pathToUsers+in_incommingMessage.fromNumber)
+                        channelsSenderIsIn = sender.getChannels()
+                        if channelName in channelsSenderIsIn:    #checking if sender is in that channel
+                            for otherUser in allUsers:
+                                channelsOtherUserIsIn = otherUser.getChannels()
+                                if channelName in channelsOtherUserIsIn:
+                                    if otherUser.getNumber() != in_incommingMessage.fromNumber or self.senderGetsHisOwnMessage:          #the sender doesn't need to get his own message
+                                        otherUser.sendSMS( channelName, sender.getNick(), potentialText )
+                                        messageHasBeenSend = True
+                            if messageHasBeenSend == False:
+                                toSendString = "you tryed to send a message to the channel '" + str( channelName ) + "' but it seems, you are the only one in that channel. make sure, the channel-name is not missspelled or join another channel with more party-people. or contact your admin."
+                                sender.sendSMS("", "derDurchschlag", toSendString)
+                            #else:
+                                #pdb.set_trace()
+                                #sender.setLastUsedChannel(channelName)
+                                #sender.setLastMessageSendAt()
+                                #sender.rewriteUserFile()
+                        else:
+                            toSendString = "echo 'derDurchschlag: your tryed to send a message to channel '" + str(channelName) + "' but you are not even in that channel. please send '@join." + str(channelName) + "' to do so."
+                            sender.sendSMS("", "derDurchschlag", toSendString)
                     else:
                         #user tryed to send a message to a channel, but is not even an existing user
                         print("user tryed to send a message to a channel, but is needs to register first, or used wrong syntax")
@@ -262,5 +365,7 @@ class Controller:
                 userFile.write( "," + in_channels[index] )
         userFile.write("\n")
         userFile.write("mutedUntil: \n")
+        #userFile.write("lastUsedChannel: \n")
+        #userFile.write("lastMessageSendAt: \n")
         userFile.close()
 
