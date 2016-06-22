@@ -129,7 +129,7 @@ class User:
             if self.muteUntil > datetime.now():
                 canBeSent = False
         if canBeSent == True:
-            toSendString =  "echo '(" + in_channel + ") " + in_sender + ":  " + in_text + "' | gammu-smsd-inject TEXT " + self.number + " -len " + str( len(in_text) + len(in_channel) + len(in_sender) + 6 )
+            toSendString =  'echo "(' + in_channel + ') ' + in_sender + ':  ' + in_text + '" | gammu-smsd-inject TEXT ' + self.number + ' -len ' + str( len(in_text) + len(in_channel) + len(in_sender) + 6 )
             #print("sms sending is suppressed")
             os.system( toSendString )
             print("sending SMS to " + self.number + " (" + self.nick + "): " + str( toSendString ) )

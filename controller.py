@@ -90,6 +90,7 @@ class Controller:
                 text = text.replace("ö", "oe")
                 text = text.replace("ü", "ue")
                 text = text.replace("ß", "ss")
+                text = text.replace('"', "'")
             if text[-1:] == "\n":
                 text = text[:-1]            #removing "/n" if there (happens at debugging)
             print("text: " + text)
