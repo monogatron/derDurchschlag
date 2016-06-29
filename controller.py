@@ -288,8 +288,11 @@ class Controller:
                     if senderIsAlreadyAUser == True:
                         UserFilePath = self.pathToUsers + in_incommingMessage.fromNumber
                         sender = user.User( UserFilePath )
-                        sender.joinChannel( blocks[1] )
-                        sender.sendSMS( "", "derDurchschlag", "you joined the channel " + blocks[1] )
+                        successfullyJoined = sender.joinChannel( blocks[1] )
+                        if successfullyJoined:
+                            sender.sendSMS( "", "derDurchschlag", "you joined the channel '" + blocks[1] + "'. cu!" )
+                        else:
+                            sender.sendSMS( "", "derDurchschlag", "it seems, you are already in the channel '" + blocks[1] + "'" )
                     else:
                         #user tryed to join a channel but is not even an existing user...
                         toSendString =  "echo 'derDurchschlag: you tryed to join a channel but you need to join the system first. send '@hello.yourNickname.join.someChannel' to do so' | gammu-smsd-inject TEXT " + in_number 

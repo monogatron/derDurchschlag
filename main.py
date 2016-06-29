@@ -50,18 +50,19 @@ except:
     print("problem while parsing config-file")
     exit(1)
     
-#try:
-controller = controller.Controller(pathToUsers, pathToInbox, delay, senderGetsHisOwnMessage)
-#except KeyboardInterrupt:
-#    print("\nshutdown by user")
-#except:
-#    print("\nentering except")
-#    #pdb.set_trace()
-#    text = "derDurchschlag is shutting down. bad coding?"
-#    toSendString =  "echo '" + text + "' | gammu-smsd-inject TEXT " + admin
-#    os.system( toSendString )
-#    print("sending SMS to " + admin + " (admin): " + str( toSendString ) )
-    
+try:
+    controller = controller.Controller(pathToUsers, pathToInbox, delay, senderGetsHisOwnMessage)
+except KeyboardInterrupt as e:
+    print("\nshutdown by user")
+    print(e)
+except Exception as e:
+    print("\nentering except: ")
+    #pdb.set_trace()
+    text = "derDurchschlag is shutting down. bad coding?"
+    toSendString =  "echo '" + text + "' | gammu-smsd-inject TEXT " + admin
+    os.system( toSendString )
+    print("sending SMS to " + admin + " (admin): " + str( toSendString ) )
+    print(e)
 
 exit(1)
 

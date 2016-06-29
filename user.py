@@ -56,10 +56,15 @@ class User:
         return self.channels
 
     def joinChannel(self, in_newChannel):
-        self.channels.append( in_newChannel)
-        self.rewriteUserFile()
+        if in_newChannel in self.channels:
+            return False
+        else:
+            self.channels.append( in_newChannel)
+            self.rewriteUserFile()
+            return True
 
     def exitChannel(self, in_channel):
+        print("entering exitChannel()")
         #pdb.set_trace()
         if in_channel in self.channels:
             self.channels.remove(in_channel)
@@ -88,6 +93,7 @@ class User:
         self.rewriteUserFile()
 
     def rewriteUserFile(self):
+        print("entering rewriteUserFile()")
         #pdb.set_trace()
         os.remove(self.pathToUserFile)          #need to remove the old file, and make a complete new one..
         userFile = open( self.pathToUserFile, 'a')
