@@ -16,8 +16,6 @@ class User:
         self.muteUntil = False
         self.pathToUserFile = in_pathToUserFile
         self.number = in_pathToUserFile.split("/")[-1]
-        #self.lastUsedChannel = ""                           #will be set to a channel when ever the user sends something in a channle
-        #self.lastMessageSendAt = ""
         with open( in_pathToUserFile ) as userFile:
             lines = userFile.readlines()
         for line in lines:
@@ -37,19 +35,8 @@ class User:
                             self.rewriteUserFile()                  #that is actually not necessary, but looks better
                     else:
                         pass
-                        #print("there is no muteUntil-value")
-                #elif key[:-1] == "lastUsedChannel":
-                #    self.lastUsedChannel = value
 
 
-    #def setLastUsedChannel(self, in_channel):
-    #    self.lastUsedChannel = in_channel
-        
-
-    #def setLastMessageSendAt(self):
-    #    pdb.set_trace()
-    #    self.lastMessageSendAt = datetime.now()
-    #    print("leaving setLastMessageSendAt")
         
 
     def getChannels(self):
@@ -65,7 +52,6 @@ class User:
 
     def exitChannel(self, in_channel):
         print("entering exitChannel()")
-        #pdb.set_trace()
         if in_channel in self.channels:
             self.channels.remove(in_channel)
             self.rewriteUserFile()
@@ -78,6 +64,7 @@ class User:
 
     def unmute(self):
         self.muteUntil = False
+        print( str( self.nick ) + " unmuted" )
         self.rewriteUserFile()
                 
     def getNick(self):
@@ -89,7 +76,7 @@ class User:
     def mute(self):
         #pdb.set_trace()
         self.muteUntil = datetime.now() + timedelta( hours = 6 )
-        print("user muted until " + str( self.muteUntil ) )
+        print( str( self.nick ) + " muted until " + str( self.muteUntil ) )
         self.rewriteUserFile()
 
     def rewriteUserFile(self):
@@ -118,13 +105,6 @@ class User:
             #serialize mutedUntil:
             stringMuteUntil = '{:%Y-%m-%d %H:%M:%S}'.format( self.muteUntil )
         userFile.write( "mutedUntil: " + stringMuteUntil + "\n")
-        
-        #if self.lastUsedChannel != "":
-        #    userFile.write("lastUsedChannel: " + str(self.lastUsedChannel) + "\n")
-        
-        #if self.lastMessageSendAt != "":
-        #    userFile.write("lastMessageSendAt: " + str(self.lastMessageSendAt) + "\n")   
-        
         userFile.close()
 
 

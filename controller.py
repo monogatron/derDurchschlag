@@ -30,9 +30,7 @@ class Controller:
         self.delay = in_delay
         print("inbox path: " + self.pathToInbox)
         print("user path: " + self.pathToUsers)
-        #check for new messages:
-        while 42 == 42:
-            #print("once again")
+        while 42 == 42:         #check for new messages:
             time.sleep( int(self.delay) )
             completePath = self.pathToInbox[:-1] + "/*.txt"
             pathesToIncommingMessages = False
@@ -40,7 +38,6 @@ class Controller:
             ArrayWithMessages = []
             if len(pathesToIncommingMessages) >= 1:
                 ArrayWithMessages = self.getArrayWithMessages( pathesToIncommingMessages )  #is is very likely that messages, that are longer then the standard-sms-size will be split into multiple "small" messages. this function merges them back together to a single one
-            #pdb.set_trace()
             for incommingMessage in ArrayWithMessages:
                 print( "\n\nreceived a message: " + str(incommingMessage.path) )
                 print( "content: " + str(incommingMessage.content) )
@@ -58,7 +55,7 @@ class Controller:
         # has the format: IN20160514_110957_00_+49123456798_00.txt
         # where             ^ this is the date
         #                            ^ this is the time of receive.
-        #        i do not know what this ^ is
+        #          i do not know what this ^ is
         #                              but this ^ is the sender's number
         #                                          and this ^ is a counter, which indicates the 'position' in a multi-message.
         # so, first we check for this numbers.
@@ -98,8 +95,6 @@ class Controller:
             
             print("removing file: " + singlePath)
             os.remove(singlePath) #removing the incomming message
-            
-        #pdb.set_trace()
         #so now we have an array with message-objects. but the multi-messages are still separated
         sorted_arrayWithMessages = sorted( arrayWithMessages, key = lambda x: x.positionInMultiMessage, reverse = True )
         #the zeroes element in this array should now have the highest positionInMultiMessage
@@ -120,27 +115,22 @@ class Controller:
                     arrayWithMessagesFromSender.append(messageInArray)
                     indexesOfMessagesIn_sorted_arrayWithMessages_whichMustBeDeleted.append(index)
                 index += 1
-            #pdb.set_trace()
             for indexToDelete in reversed(indexesOfMessagesIn_sorted_arrayWithMessages_whichMustBeDeleted):#need to reverse the order of to-delete-indexes because otherwise the indexes wouldn't be correct any more...
                 sorted_arrayWithMessages.pop(indexToDelete)
             sorted_arrayWithMessagesFromSender = sorted( arrayWithMessagesFromSender, key = lambda x: x.positionInMultiMessage, reverse = False )
             # now we have an array with messages from a sender who sent a multi-message. the order is the lowest number of "positionInMultiMessage" in the beginning
-            #pdb.set_trace()
             mergedContent = ""
             for messageInArray in sorted_arrayWithMessagesFromSender:
                 mergedContent += messageInArray.content
             newMergedMessage = message.Message( sorted_arrayWithMessagesFromSender[0].path, sorted_arrayWithMessagesFromSender[0].date, sorted_arrayWithMessagesFromSender[0].time, sorted_arrayWithMessagesFromSender[0].fromNumber, 0, mergedContent )
             sorted_arrayWithMessages.append(newMergedMessage)
             sorted_arrayWithMessages = sorted( sorted_arrayWithMessages, key = lambda x: x.positionInMultiMessage, reverse = True )
-            #pdb.set_trace()
-        #print("leaving getArrayWithMessages")
         return sorted_arrayWithMessages
         
         
         
 
     def getAllUsers(self):
-        #pdb.set_trace()
         pathesToUsers = glob.glob(self.pathToUsers + "*")   #puts all pathes to all user-files into an array
         output = []
         for path in pathesToUsers:
@@ -169,7 +159,7 @@ class Controller:
         #if the message doesn't beginn with an "@", 
         #then we just want to send the message to channel, the user is in
         #if the user is in more then one channel, this doesn't work and 
-        #the user needs to get a sms about that fact
+        #the user needs to get an sms about that fact
         else:
             #neet to check, it the user is existing in database:
             sender = False
@@ -177,35 +167,26 @@ class Controller:
             for user in allUsers:
                 if in_incommingMessage.fromNumber == user.getNumber():
                     sender = user
-
             if sender != False:
-                #pdb.set_trace()
                 channelsSenderIsIn = sender.getChannels()
                 if len(channelsSenderIsIn) == 1:                    # user is in one channel or in no channel
                     if channelsSenderIsIn[0] == "":                 #user is in no channel
                         sender.sendSMS( "", "derDurchschlag", "you are in no channel. please send '@join.channelName' to join a channel")
                     else:                                           #user is only in one channel
-                        #allOtherUsers = self.getAllUsers()
                         for user in allUsers:
                             channelsOtherUserIsIn = user.getChannels()
                             if channelsSenderIsIn[0] in channelsOtherUserIsIn:
-                                #pdb.set_trace()
                                 if ( user.getNumber() != in_incommingMessage.fromNumber ) or self.senderGetsHisOwnMessage:        #sender doesn't need to get his own message
+                                    time.sleep(1)   #it sometimes happend, that users get the same message twice, but this program only sent it once. trying if it is any better with this delay.
                                     user.sendSMS( channelsSenderIsIn[0], sender.getNick(), in_incommingMessage.content )
-                        #sender.setLastUsedChannel(channelsSenderIsIn[0])
-                        #sender.setLastMessageSendAt()
-                        #sender.rewriteUserFile()
                 if len( channelsSenderIsIn ) > 1:
                     sender.sendSMS( "", "derDurchschlag", "you are in more then one channel. you must specify the channel, you want to send your message to. do that by add '@channelName' to the beginning of your message")
             else:
                 print("received a message but doesn't begin with an '@' and is not in database")
 
     
-    #def interpretCommand(self, in_number, in_text ):
+
     def interpretCommand(self, in_incommingMessage ):
-        #pdb.set_trace()
-        #print("entering interpretCommand()")
-        #commandBlock = in_text.split(" ")[0]
         commandBlock = in_incommingMessage.content.split(" ")[0]
         noMessageContent = False
         potentialText = ""
@@ -214,15 +195,12 @@ class Controller:
         except IndexError:
             noMessageContent = True
         blocks = commandBlock.split(".")
-        #print("blocks: " + str( blocks ) )
         blocks[0] = blocks[0][1:]       #remove the "@" from first block
         pathToAllExistingUsers = glob.glob(self.pathToUsers + "*")          #get pathes to all existing users
         NumbersOfAllExistingUsers = []
         senderIsAlreadyAUser = False
-        #pdb.set_trace()
         for path in pathToAllExistingUsers:
             NumbersOfAllExistingUsers.append( path.split("/")[-1] )
-        #if in_number in NumbersOfAllExistingUsers:
         if in_incommingMessage.fromNumber in NumbersOfAllExistingUsers:
             senderIsAlreadyAUser = True
 
@@ -324,7 +302,6 @@ class Controller:
                         os.system( toSendString )
                 else:
                     if len(blocks) == 1 and senderIsAlreadyAUser == True:                        #command only consists of one word. for example '@mensen'. then its clear, it is a channel name
-                        #pdb.set_trace()
                         channelName = blocks[0].split(" ")[0]
                         messageHasBeenSend = False                  #message has been send at least once. if not, we can write the user back, that the channel is empty
                         allUsers = self.getAllUsers()
@@ -340,11 +317,6 @@ class Controller:
                             if messageHasBeenSend == False:
                                 toSendString = "you tryed to send a message to the channel '" + str( channelName ) + "' but it seems, you are the only one in that channel. make sure, the channel-name is not missspelled or join another channel with more party-people. or contact your admin."
                                 sender.sendSMS("", "derDurchschlag", toSendString)
-                            #else:
-                                #pdb.set_trace()
-                                #sender.setLastUsedChannel(channelName)
-                                #sender.setLastMessageSendAt()
-                                #sender.rewriteUserFile()
                         else:
                             toSendString = "echo 'derDurchschlag: your tryed to send a message to channel '" + str(channelName) + "' but you are not even in that channel. please send '@join." + str(channelName) + "' to do so."
                             sender.sendSMS("", "derDurchschlag", toSendString)
@@ -353,7 +325,6 @@ class Controller:
                         print("user tryed to send a message to a channel, but is needs to register first, or used wrong syntax")
         except KeyError:
             print("error while trying to handle a incomming command")
-            #pdb.set_trace()
             #missing: send user a sms back, that his command is not valid.
 
 
@@ -369,7 +340,5 @@ class Controller:
                 userFile.write( "," + in_channels[index] )
         userFile.write("\n")
         userFile.write("mutedUntil: \n")
-        #userFile.write("lastUsedChannel: \n")
-        #userFile.write("lastMessageSendAt: \n")
         userFile.close()
 
