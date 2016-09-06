@@ -19,6 +19,8 @@ pathToInbox = ""
 delay = -1
 admin = ""
 senderGetsHisOwnMessage = False
+pullMessageKeyword = ""
+pullMessageContent = ""
 
 try:
     try:
@@ -46,12 +48,18 @@ try:
             else:
                 print("error while reading 'senderGetsHisOwnMessage'-value from config file")
                 exit(1)
+        elif line.split(" ")[0] == "PullMessageKeyword":
+            pullMessageKeyword = line.split(" ")[1][:-1]
+        elif line.split(" ")[0] == "PullMessageContent":
+            #pdb.set_trace()
+            pullMessageContent = line.split(" ", 1)[1][:-1]
+            print("pullMessageContent: " + str(pullMessageContent))
 except:
     print("problem while parsing config-file")
     exit(1)
     
 try:
-    controller = controller.Controller(pathToUsers, pathToInbox, delay, senderGetsHisOwnMessage)
+    controller = controller.Controller(pathToUsers, pathToInbox, delay, senderGetsHisOwnMessage, pullMessageKeyword, pullMessageContent)
 except KeyboardInterrupt as e:
     print("\nshutdown by user")
     print(e)

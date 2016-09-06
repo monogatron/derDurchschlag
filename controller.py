@@ -14,12 +14,14 @@ class Controller:
     
     
 
-    def __init__(self, in_pathToUsers, in_pathToInbox, in_delay, in_senderGetsHisOwnMessage):
+    def __init__(self, in_pathToUsers, in_pathToInbox, in_delay, in_senderGetsHisOwnMessage, in_pullMessageKeyword, in_pullMessageContent):
         self.pathToUsers = ""
         self.pathToInbox = ""
         self.delay = -1
         self.senderGetsHisOwnMessage = in_senderGetsHisOwnMessage
         self.partialReplacementOfSpecialCharacters = True
+        self.pullMessageKeyword = in_pullMessageKeyword
+        self.pullMessageContent = in_pullMessageContent
 
         if in_pathToInbox[-1:] != "/":
             in_pathToInbox = in_pathToInbox + "/"
@@ -42,7 +44,11 @@ class Controller:
                 print( "\n\nreceived a message: " + str(incommingMessage.path) )
                 print( "content: " + str(incommingMessage.content) )
                 numberOfSender = incommingMessage.fromNumber
-                self.interpretMessage( incommingMessage )
+                if incommingMessage.isPullMessageRequest == False:
+                    self.interpretMessage( incommingMessage )
+                else:
+                    print( "got pullMessageRequest from number: " + str(incommingMessage.fromNumber) )
+                    self.handlePullMessageRequest( incommingMessage )
                 
 
 
@@ -91,7 +97,10 @@ class Controller:
             if text[-1:] == "\n":
                 text = text[:-1]            #removing "/n" if there (happens at debugging)
             print("text: " + text)
-            arrayWithMessages.append( message.Message( singlePath, date, time, fromNumber, positionInMultiMessage, text) )
+            isPullMessageRequest = False
+            if text == self.pullMessageKeyword:
+                isPullMessageRequest = True                
+            arrayWithMessages.append( message.Message( singlePath, date, time, fromNumber, positionInMultiMessage, text, isPullMessageRequest) )
             
             print("removing file: " + singlePath)
             os.remove(singlePath) #removing the incomming message
@@ -141,6 +150,9 @@ class Controller:
 
     #def interpretMessage(self, in_numberOfSender, in_text):
     def interpretMessage(self, in_incommingMessage):
+        
+        
+        
         #catch special cases:
         if in_incommingMessage.content == "mute":
             in_incommingMessage.content = "@mute"       #because most people probalby won't accept the "@", i'm doing an exeption here. "mute" without an "@" is enough to mute, and will be handlet the same as "@mute"
@@ -160,7 +172,10 @@ class Controller:
         #then we just want to send the message to channel, the user is in
         #if the user is in more then one channel, this doesn't work and 
         #the user needs to get an sms about that fact
+        
         else:
+            
+            #no pullMessage-request...
             #neet to check, it the user is existing in database:
             sender = False
             allUsers = self.getAllUsers()       #getAllUser() returns a array with user-objects
@@ -342,3 +357,8 @@ class Controller:
         userFile.write("mutedUntil: \n")
         userFile.close()
 
+
+
+    def handlePullMessageRequest( self, in_incommingMessage ):
+        toSendString =  'echo ' + self.pullMessageContent + ' | gammu-smsd-inject TEXT ' + in_incommingMessage.fromNumber + ' -len ' + str( len(self.pullMessageContent) )
+        os.system( toSendString )
