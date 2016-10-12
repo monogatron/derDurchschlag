@@ -55,7 +55,6 @@ class Controller:
 
 
     def getArrayWithMessages(self, in_pathesToIncommingMessages):
-        #print("entering getArrayWithMessages")
         # first we need to check if there are multiple-messages at all. 
         # a multiple-message can be recognized by the file-name. a single-message 
         # has the format: IN20160514_110957_00_+49123456798_00.txt
@@ -131,7 +130,7 @@ class Controller:
             mergedContent = ""
             for messageInArray in sorted_arrayWithMessagesFromSender:
                 mergedContent += messageInArray.content
-            newMergedMessage = message.Message( sorted_arrayWithMessagesFromSender[0].path, sorted_arrayWithMessagesFromSender[0].date, sorted_arrayWithMessagesFromSender[0].time, sorted_arrayWithMessagesFromSender[0].fromNumber, 0, mergedContent )
+            newMergedMessage = message.Message( sorted_arrayWithMessagesFromSender[0].path, sorted_arrayWithMessagesFromSender[0].date, sorted_arrayWithMessagesFromSender[0].time, sorted_arrayWithMessagesFromSender[0].fromNumber, 0, mergedContent, isPullMessageRequest )
             sorted_arrayWithMessages.append(newMergedMessage)
             sorted_arrayWithMessages = sorted( sorted_arrayWithMessages, key = lambda x: x.positionInMultiMessage, reverse = True )
         return sorted_arrayWithMessages
