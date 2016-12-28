@@ -1,4 +1,23 @@
-inbox: /var/spool/gammu/inbox/
-users: /home/pi/derDurchschlag/users/
-delay: 30
-admin: +123456789
+#this is a test-config-file
+inbox: /var/spool/gammu/inbox/                                                  # the 'inbox'-parameter specifyes the path to the new messages
+users: /home/pi/derDurchschlag/users/                                           # the 'users'-parameter specifyes the path to the user-database
+delay: 10                                                                       # the 'delay'-parameter defines the time between the checking for new messages in seconds
+admin: +123456789                                                               # this is the mobile-number of the administrator of the system. the admin will receive notifications about a shutdown of the system etc.
+
+keyword0: someKeyword0.0 someKeyword0.1 someKeyword0.2                          # you can define a list of keywords here which all lead to the same answer (see below)
+keyword1: someKeyword1.0 someKeyword1.1 someKeyword1.2
+keyword2: someKeyword2.0 someKeyword2.1 someKeyword2.2
+answer0: someAnswer0
+answer1: someAnswer1
+answer2: someAnswer2
+
+partyMode: False                                                                # The Party-Mode acts like that: if True the system will send everybody who 
+                                                                                # is not a registered user and sent a message that doesn't beginn with an '@' 
+                                                                                # the defaultAnswer back. that is handy if you use derDurchschlag to get a 
+                                                                                # bunch of unknown people to a party-spot by let them send a keyword to the 
+                                                                                # system and get an answer with the discription back. but if they fail to send 
+                                                                                # the correct keyword, they get the default-answer with other instructions.
+
+defaultAnswer: someDefaultAnswer
+
+

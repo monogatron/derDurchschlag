@@ -14,14 +14,16 @@ class Controller:
     
     
 
-    def __init__(self, in_pathToUsers, in_pathToInbox, in_delay, in_senderGetsHisOwnMessage, in_pullMessageKeyword, in_pullMessageContent):
+    def __init__(self, in_pathToUsers, in_pathToInbox, in_delay, in_senderGetsHisOwnMessage, in_pullmessageKeywordArray, in_pullmessageAnswerArray, in_pullmessageDefaultAnswer, in_partyMode):
         self.pathToUsers = ""
         self.pathToInbox = ""
         self.delay = -1
         self.senderGetsHisOwnMessage = in_senderGetsHisOwnMessage
         self.partialReplacementOfSpecialCharacters = True
-        self.pullMessageKeyword = in_pullMessageKeyword
-        self.pullMessageContent = in_pullMessageContent
+        self.pullmessageKeywordArray = in_pullmessageKeywordArray
+        self.pullmessageAnswerArray = in_pullmessageAnswerArray
+        self.pullmessageDefaultAnswer = in_pullmessageDefaultAnswer
+        self.partyMode = in_partyMode
 
         if in_pathToInbox[-1:] != "/":
             in_pathToInbox = in_pathToInbox + "/"
@@ -44,10 +46,12 @@ class Controller:
                 print( "\n\nreceived a message: " + str(incommingMessage.path) )
                 print( "content: " + str(incommingMessage.content) )
                 numberOfSender = incommingMessage.fromNumber
+                #pdb.set_trace()
+                pass
                 if incommingMessage.isPullMessageRequest == False:
                     self.interpretMessage( incommingMessage )
                 else:
-                    print( "got pullMessageRequest from number: " + str(incommingMessage.fromNumber) )
+                    print( "got pullMessageRequest from number: " + str(incommingMessage.fromNumber) + str(" ; answerIndex: ") + str(incommingMessage.answerIndex) )
                     self.handlePullMessageRequest( incommingMessage )
                 
 
@@ -65,6 +69,7 @@ class Controller:
         #                                          and this ^ is a counter, which indicates the 'position' in a multi-message.
         # so, first we check for this numbers.
         arrayWithMessages = []
+        answerIndex = -1
         for singlePath in in_pathesToIncommingMessages:
             fileName = singlePath.split("/").pop()  #file name of the message
             fileName = fileName.split(".")[0]       #without the '.'-extention
@@ -97,20 +102,26 @@ class Controller:
                 text = text[:-1]            #removing "/n" if there (happens at debugging)
             print("text: " + text)
             isPullMessageRequest = False
-            if text == self.pullMessageKeyword:
-                isPullMessageRequest = True                
-            arrayWithMessages.append( message.Message( singlePath, date, time, fromNumber, positionInMultiMessage, text, isPullMessageRequest) )
+            #answerIndex = -1
+            #pdb.set_trace()
+            for index in range(0, len(self.pullmessageKeywordArray)):
+                if text in self.pullmessageKeywordArray[index]:
+                    answerIndex = index
+                    isPullMessageRequest = True
+            #if text == self.pullMessageKeyword:
+                #isPullMessageRequest = True                
+            arrayWithMessages.append( message.Message( singlePath, date, time, fromNumber, positionInMultiMessage, text, isPullMessageRequest, answerIndex) )
             
             print("removing file: " + singlePath)
             os.remove(singlePath) #removing the incomming message
         #so now we have an array with message-objects. but the multi-messages are still separated
         sorted_arrayWithMessages = sorted( arrayWithMessages, key = lambda x: x.positionInMultiMessage, reverse = True )
-        #the zeroes element in this array should now have the highest positionInMultiMessage
+        #the 0th element in this array should now have the highest positionInMultiMessage
         
         
         
         while sorted_arrayWithMessages[0].positionInMultiMessage != 0: #is there a multi-message at all??
-            print("entering while-loop")
+            #print("entering while-loop")
             #ok, we have a multi message. now we need to merge that message.
             #first we make an extra array with messages from the sender
             arrayWithMessagesFromSender = []
@@ -130,7 +141,7 @@ class Controller:
             mergedContent = ""
             for messageInArray in sorted_arrayWithMessagesFromSender:
                 mergedContent += messageInArray.content
-            newMergedMessage = message.Message( sorted_arrayWithMessagesFromSender[0].path, sorted_arrayWithMessagesFromSender[0].date, sorted_arrayWithMessagesFromSender[0].time, sorted_arrayWithMessagesFromSender[0].fromNumber, 0, mergedContent, isPullMessageRequest )
+            newMergedMessage = message.Message( sorted_arrayWithMessagesFromSender[0].path, sorted_arrayWithMessagesFromSender[0].date, sorted_arrayWithMessagesFromSender[0].time, sorted_arrayWithMessagesFromSender[0].fromNumber, 0, mergedContent, isPullMessageRequest, answerIndex )
             sorted_arrayWithMessages.append(newMergedMessage)
             sorted_arrayWithMessages = sorted( sorted_arrayWithMessages, key = lambda x: x.positionInMultiMessage, reverse = True )
         return sorted_arrayWithMessages
@@ -147,10 +158,7 @@ class Controller:
         return output       #returns the array with user-objects
 
 
-    #def interpretMessage(self, in_numberOfSender, in_text):
     def interpretMessage(self, in_incommingMessage):
-        
-        
         
         #catch special cases:
         if in_incommingMessage.content == "mute":
@@ -168,14 +176,14 @@ class Controller:
             self.interpretCommand( in_incommingMessage )
         
         #if the message doesn't beginn with an "@", 
-        #then we just want to send the message to channel, the user is in
+        #then we just want to send the message to the channel, the user is in.
         #if the user is in more then one channel, this doesn't work and 
         #the user needs to get an sms about that fact
         
         else:
             
             #no pullMessage-request...
-            #neet to check, it the user is existing in database:
+            #need to check, if the user is existing in database:
             sender = False
             allUsers = self.getAllUsers()       #getAllUser() returns a array with user-objects
             for user in allUsers:
@@ -197,8 +205,11 @@ class Controller:
                     sender.sendSMS( "", "derDurchschlag", "you are in more then one channel. you must specify the channel, you want to send your message to. do that by add '@channelName' to the beginning of your message")
             else:
                 print("received a message but doesn't begin with an '@' and is not in database")
-
+                if self.partyMode:
+                    self.sendDefaultMessageTo(in_incommingMessage.fromNumber)
+                    
     
+
 
     def interpretCommand(self, in_incommingMessage ):
         commandBlock = in_incommingMessage.content.split(" ")[0]
@@ -359,5 +370,12 @@ class Controller:
 
 
     def handlePullMessageRequest( self, in_incommingMessage ):
-        toSendString =  'echo ' + self.pullMessageContent + ' | gammu-smsd-inject TEXT ' + in_incommingMessage.fromNumber + ' -len ' + str( len(self.pullMessageContent) )
+        toSendString =  'echo ' + self.pullmessageAnswerArray[in_incommingMessage.answerIndex] + ' | gammu-smsd-inject TEXT ' + in_incommingMessage.fromNumber + ' -len ' + str( len(self.pullmessageAnswerArray[in_incommingMessage.answerIndex]) )
+        print("handlePullMessageRequest(): toSendString: " + toSendString )
         os.system( toSendString )
+        
+        
+    def sendDefaultMessageTo(self, in_number):
+        toSendString = 'echo ' + self.pullmessageDefaultAnswer + ' | gammu-smsd-inject TEXT ' + in_number + ' -len ' + str( len(self.pullmessageDefaultAnswer) )
+        print("sendDefaultMessageTo(): toSendString: " + toSendString) 
+        os.system(toSendString)
