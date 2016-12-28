@@ -111,7 +111,7 @@ try:
                     #print("comment found: " + str(line))
             else:
                 pass
-    pdb.set_trace()
+    #pdb.set_trace()
     pass
 
     if len(keywordArray) != len(answerArray):
