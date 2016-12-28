@@ -36,6 +36,7 @@ class Controller:
         print("user path: " + self.pathToUsers)
         while 42 == 42:         #check for new messages:
             time.sleep( int(self.delay) )
+            #print("checking")
             completePath = self.pathToInbox[:-1] + "/*.txt"
             pathesToIncommingMessages = False
             pathesToIncommingMessages = glob.glob( completePath )
@@ -89,9 +90,19 @@ class Controller:
             
             #that^ was the header,
             #now comes the content:
-            textFile = open(singlePath, 'r')
+            
+            
+            
+            
+            textFile = open(singlePath, 'rb')               # i need to open it as a byte-object to decode it as utf-8 and replace non-valid characters with the '?'-symbol. i learned that at the 33c3
             text = textFile.read()
+            text = text.decode("utf-8", errors="replace")   
+            
+            
+            
+            
             text = text.lower()                                     #everything to lower case. it could cause problems, when channel names are not spelled correctly (upper/lower-case)
+            
             if self.partialReplacementOfSpecialCharacters == True:
                 text = text.replace("ä", "ae")                      #gammu has problems to send utf-8 characters. i was not able to fix that. so i just replace the characters with ascii-conform ones
                 text = text.replace("ö", "oe")
