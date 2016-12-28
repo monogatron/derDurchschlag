@@ -199,7 +199,7 @@ class Controller:
                             channelsOtherUserIsIn = user.getChannels()
                             if channelsSenderIsIn[0] in channelsOtherUserIsIn:
                                 if ( user.getNumber() != in_incommingMessage.fromNumber ) or self.senderGetsHisOwnMessage:        #sender doesn't need to get his own message
-                                    time.sleep(1)   #it sometimes happend, that users get the same message twice, but this program only sent it once. trying if it is any better with this delay.
+                                    time.sleep(2)   #it sometimes happend, that users get the same message twice, but this program only sent it once. trying if it is any better with this delay.
                                     user.sendSMS( channelsSenderIsIn[0], sender.getNick(), in_incommingMessage.content )
                 if len( channelsSenderIsIn ) > 1:
                     sender.sendSMS( "", "derDurchschlag", "you are in more then one channel. you must specify the channel, you want to send your message to. do that by add '@channelName' to the beginning of your message")

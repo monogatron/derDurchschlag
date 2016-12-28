@@ -26,6 +26,8 @@ defaultAnswer = "There is no default answer"    #this answer will be sent to any
 answerArray = []  
 partyMode = False                               #this array will contain the answers. the the answer on the position in this array corresponds with the keyword (aka question) in the keywordArray.
 
+Debug_lineCounter = 0
+
 try:
     try:
         with open(pathToConfig) as config:
@@ -34,9 +36,9 @@ try:
         print("prblem while opening config-file")
 
     #parsing config-files
-    #Debug_lineCounter = 0
+    
     for line in lines:
-        #Debug_lineCounter += 1
+        Debug_lineCounter += 1
         #if Debug_lineCounter == 17:
         #    pdb.set_trace()
         
@@ -48,7 +50,9 @@ try:
         elif line.split(" ")[0] == "users:":
             pathToUsers = line.split(" ")[1][:-1]
         elif line.split(" ")[0] == "delay:":
-            delay = int( line.split(" ")[1][:-1] )
+            #pdb.set_trace()
+            #delay = int( line.split(" ")[1][:-1] )
+            delay = int( line.split(" ")[1] )
         elif line.split(" ")[0] == "admin:":
             admin = line.split(" ")[1][:-1]
         elif line.split(" ")[0] == "senderGetsHisOwnMessage:":
@@ -107,7 +111,7 @@ try:
                     #print("comment found: " + str(line))
             else:
                 pass
-    #pdb.set_trace()
+    pdb.set_trace()
     pass
 
     if len(keywordArray) != len(answerArray):
@@ -116,6 +120,7 @@ try:
                 
 except Exception as e:
     print("problem while parsing config-file. Exception:")
+    print("stoped at config-file, line: " + str(Debug_lineCounter))
     print(e)
     exit(1)
 
