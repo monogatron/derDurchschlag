@@ -108,16 +108,16 @@ class User:
         userFile.close()
 
 
-    def sendSMS(self, in_channel, in_sender, in_text):
+    def sendSMS(self, in_channel, in_time, in_sender, in_text):
         print("entering sendSMS()")
         canBeSent = True
         if self.muteUntil != False:                         #check if there is something at all in the muteUntil-variable
             if self.muteUntil > datetime.now():
                 canBeSent = False
         if canBeSent == True:
-            toSendString =  'echo "(' + in_channel + ') ' + in_sender + ':  ' + in_text + '" | gammu-smsd-inject TEXT ' + self.number + ' -len ' + str( len(in_text) + len(in_channel) + len(in_sender) + 6 )
+            toSendString =  'echo "(' + in_channel + ') ' + '[' + in_time + ']' + in_sender + ':  ' + in_text + '" | gammu-smsd-inject TEXT ' + self.number + ' -len ' + str( len(in_text) + len(in_channel) + len(in_sender) + 6 )
             #print("sms sending is suppressed")
             os.system( toSendString )
-            print("sending SMS to " + self.number + " (" + self.nick + "): " + str( toSendString ) )
+            print("sending SMS to " + self.number + "[" + in_time + "]" + " (" + self.nick + "): " + str( toSendString ) )
         else:
             print("didn't send message to " + self.nick + " (" + self.number + "), because user is muted")
